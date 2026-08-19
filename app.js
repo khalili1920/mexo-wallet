@@ -1,83 +1,90 @@
-const MANIFEST_URL="https://khalili1920.github.io/mexo-wallet/tonconnect-manifest.json";
+const MANIFEST_URL = "https://khalili1920.github.io/mexo-wallet/tonconnect-manifest.json";
 
-const PROOF_PAYLOAD_URL="";
-const PROOF_VERIFY_URL="";
+const PROOF_PAYLOAD_URL = "";
+const PROOF_VERIFY_URL = "";
 
-const ui=new TON_CONNECT_UI.TonConnectUI({
-  manifestUrl:MANIFEST_URL,
-  buttonRootId:"ton-connect",
-  restoreConnection:true
+const ui = new TON_CONNECT_UI.TonConnectUI({
+  manifestUrl: MANIFEST_URL,
+  buttonRootId: "ton-connect",
+  restoreConnection: true
 });
 
-const statusEl=document.getElementById("status");
-const walletBox=document.getElementById("wallet-box");
-const walletAddressEl=document.getElementById("wallet-address");
-const proofStatusEl=document.getElementById("proof-status");
-const useWalletButton=document.getElementById("use-wallet");
+const statusEl = document.getElementById("status");
+const walletBox = document.getElementById("wallet-box");
+const walletAddressEl = document.getElementById("wallet-address");
+const proofStatusEl = document.getElementById("proof-status");
+const useWalletButton = document.getElementById("use-wallet");
 
-let connectedWallet=null;
+let connectedWallet = null;
 
-function setStatus(t){
-  statusEl.textContent=t;
+function setStatus(text) {
+  statusEl.textContent = text;
 }
 
-function shortAddress(a){
-  return a&&a.length>18
-    ? a.slice(0,9)+"..."+a.slice(-8)
-    : a||"";
+function shortAddress(address) {
+  return address && address.length > 18
+    ? address.slice(0, 9) + "..." + address.slice(-8)
+    : address || "";
 }
 
-async function prepareProof(){
-  if(!PROOF_PAYLOAD_URL){
+async function prepareProof() {
+  if (!PROOF_PAYLOAD_URL) {
     ui.setConnectRequestParameters(null);
     return;
   }
 
-  try{
-    ui.setConnectRequestParameters({state:"loading"});
-
-    const r=await fetch(PROOF_PAYLOAD_URL,{
-      method:"POST",
-      headers:{"content-type":"application/json"},
-      credentials:"include"
+  try {
+    ui.setConnectRequestParameters({
+      state: "loading"
     });
 
-    if(!r.ok)throw new Error("payload");
+    const response = await fetch(PROOF_PAYLOAD_URL, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json"
+      },
+      credentials: "include"
+    });
 
-    const payload=await r.text();
+    if (!response.ok) {
+      throw new Error("payload");
+    }
+
+    const payload = await response.text();
 
     ui.setConnectRequestParameters({
-      state:"ready",
-      value:{tonProof:payload}
+      state: "ready",
+      value: {
+        tonProof: payload
+      }
     });
 
-  }catch(e){
+  } catch (error) {
     ui.setConnectRequestParameters(null);
-    setStatus("Wallet verification service is temporarily unavailable.");
-    console.error(e);
+
+    setStatus(
+      "Wallet verification service is temporarily unavailable."
+    );
+
+    console.error(error);
   }
 }
 
-async function verifyProof(wallet){
+async function verifyProof(wallet) {
 
-  const item=wallet?.connectItems?.tonProof;
+  const proofItem = wallet?.connectItems?.tonProof;
 
-  if(!item||!("proof" in item)){
-    proofStatusEl.textContent="TON proof was not returned by this wallet.";
-    setStatus("Wallet ownership could not be verified.");
+  /*
+   * TON Proof is NOT required for the current MEXO flow.
+   * If the wallet does not return a proof, we still allow
+   * the user to use the connected wallet.
+   */
 
-    /*
-     * IMPORTANT:
-     * Proof is not required for our current MEXO flow.
-     * Therefore the wallet can still be selected.
-     */
-    useWalletButton.classList.remove("hidden");
+  if (!proofItem || !("proof" in proofItem)) {
 
-    return;
-  }
+    proofStatusEl.textContent =
+      "Wallet connected successfully.";
 
-  if(!PROOF_VERIFY_URL){
-    proofStatusEl.textContent="Wallet connected successfully.";
     setStatus("Wallet connected.");
 
     useWalletButton.classList.remove("hidden");
@@ -85,52 +92,80 @@ async function verifyProof(wallet){
     return;
   }
 
-  try{
+  if (!PROOF_VERIFY_URL) {
 
-    proofStatusEl.textContent="Verifying wallet ownership...";
+    proofStatusEl.textContent =
+      "Wallet connected successfully.";
 
-    const r=await fetch(PROOF_VERIFY_URL,{
-      method:"POST",
-      headers:{"content-type":"application/json"},
-      credentials:"include",
-      body:JSON.stringify({
-        account:wallet.account,
-        proof:item.proof
-      })
-    });
-
-    const result=await r.json();
-
-    if(!r.ok||!result.verified){
-      throw new Error(result.error||"verification failed");
-    }
-
-    proofStatusEl.textContent="✓ Wallet ownership verified.";
-    setStatus("Wallet verified successfully.");
+    setStatus("Wallet connected.");
 
     useWalletButton.classList.remove("hidden");
 
-  }catch(e){
+    return;
+  }
 
-    proofStatusEl.textContent="Wallet verification failed.";
-    setStatus("Please disconnect and connect the wallet again.");
+  try {
+
+    proofStatusEl.textContent =
+      "Verifying wallet ownership...";
+
+    const response = await fetch(PROOF_VERIFY_URL, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json"
+      },
+      credentials: "include",
+      body: JSON.stringify({
+        account: wallet.account,
+        proof: proofItem.proof
+      })
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.verified) {
+      throw new Error(
+        result.error || "verification failed"
+      );
+    }
+
+    proofStatusEl.textContent =
+      "✓ Wallet ownership verified.";
+
+    setStatus(
+      "Wallet verified successfully."
+    );
+
+    useWalletButton.classList.remove("hidden");
+
+  } catch (error) {
+
+    proofStatusEl.textContent =
+      "Wallet verification failed.";
+
+    setStatus(
+      "Please disconnect and connect the wallet again."
+    );
 
     useWalletButton.classList.add("hidden");
 
-    console.error(e);
+    console.error(error);
   }
 }
 
-ui.onStatusChange(async wallet=>{
+ui.onStatusChange(async (wallet) => {
 
-  connectedWallet=wallet;
+  connectedWallet = wallet;
 
-  if(!wallet){
+  if (!wallet) {
 
     walletBox.classList.add("hidden");
+
     useWalletButton.classList.add("hidden");
 
-    setStatus("Connect your TON Wallet to continue.");
+    setStatus(
+      "Connect your TON Wallet to continue."
+    );
 
     await prepareProof();
 
@@ -139,34 +174,73 @@ ui.onStatusChange(async wallet=>{
 
   walletBox.classList.remove("hidden");
 
-  walletAddressEl.textContent=
-    shortAddress(wallet.account?.address||"");
+  walletAddressEl.textContent =
+    shortAddress(
+      wallet.account?.address || ""
+    );
 
   setStatus("Wallet connected.");
 
   await verifyProof(wallet);
-
 });
 
-useWalletButton.addEventListener("click",async()=>{
 
-  const address=connectedWallet?.account?.address;
+/*
+ * USE THIS WALLET
+ *
+ * After the wallet is connected:
+ * MEXO Wallet → Telegram Bot
+ */
 
-  if(!address){
-    setStatus("Wallet address is not available.");
+useWalletButton.addEventListener("click", async () => {
+
+  const address =
+    connectedWallet?.account?.address;
+
+  if (!address) {
+
+    setStatus(
+      "Wallet address is not available."
+    );
+
     return;
   }
 
-  setStatus("Returning to MEXO Airdrop...");
+  setStatus(
+    "Returning to MEXO Airdrop..."
+  );
+
+  const botUrl =
+    "https://t.me/mexoairdrop_bot?start=wallet_" +
+    encodeURIComponent(address);
+
 
   /*
-   * Send the wallet address to the Telegram bot.
+   * When MEXO Wallet is opened inside Telegram,
+   * use Telegram WebApp's official link handler.
    */
-  const botUrl=
-    "https://t.me/mexoairdrop_bot?start=wallet_"+encodeURIComponent(address);
 
-  window.location.href=botUrl;
+  if (
+    window.Telegram &&
+    window.Telegram.WebApp &&
+    typeof window.Telegram.WebApp.openTelegramLink === "function"
+  ) {
+
+    window.Telegram.WebApp.openTelegramLink(
+      botUrl
+    );
+
+    return;
+  }
+
+
+  /*
+   * Fallback for normal browser.
+   */
+
+  window.location.href = botUrl;
 
 });
+
 
 prepareProof();
