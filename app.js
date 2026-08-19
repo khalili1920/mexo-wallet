@@ -25,9 +25,7 @@ function setStatus(text) {
 }
 
 function shortAddress(address) {
-  if (!address) {
-    return "";
-  }
+  if (!address) return "";
 
   return address.length > 18
     ? address.slice(0, 9) + "..." + address.slice(-8)
@@ -35,59 +33,10 @@ function shortAddress(address) {
 }
 
 async function prepareProof() {
-  if (!PROOF_PAYLOAD_URL) {
-    ui.setConnectRequestParameters(null);
-    return;
-  }
-
-  try {
-    ui.setConnectRequestParameters({
-      state: "loading"
-    });
-
-    const response = await fetch(PROOF_PAYLOAD_URL, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json"
-      },
-      credentials: "include"
-    });
-
-    if (!response.ok) {
-      throw new Error("payload request failed");
-    }
-
-    const payload = await response.text();
-
-    ui.setConnectRequestParameters({
-      state: "ready",
-      value: {
-        tonProof: payload
-      }
-    });
-
-  } catch (error) {
-    ui.setConnectRequestParameters(null);
-
-    setStatus(
-      "Wallet verification service is temporarily unavailable."
-    );
-
-    console.error(error);
-  }
+  ui.setConnectRequestParameters(null);
 }
 
 async function verifyProof(wallet) {
-
-  /*
-   * TON Proof is intentionally not required
-   * for the current MEXO withdrawal flow.
-   */
-
-  if (!proofStatusEl) {
-    return;
-  }
-
   proofStatusEl.textContent =
     "Wallet connected successfully.";
 
@@ -148,65 +97,76 @@ useWalletButton.addEventListener("click", () => {
   }
 
 
+  const telegram =
+    window.Telegram?.WebApp;
+
+
+  if (!telegram) {
+
+    setStatus(
+      "Telegram WebApp is not available."
+    );
+
+    return;
+  }
+
+
   /*
-   * Save the selected wallet temporarily
-   * inside the Telegram WebApp.
+   * Send Wallet Address to Telegram.
    */
+
+  const data = JSON.stringify({
+
+    type: "mexo_wallet_connected",
+
+    wallet_address: address
+
+  });
+
 
   try {
 
-    if (
-      window.Telegram &&
-      window.Telegram.WebApp
-    ) {
+    telegram.sendData(data);
 
-      window.Telegram.WebApp.CloudStorage.setItem(
-        "mexo_wallet_address",
-        address,
-        function(error) {
-
-          if (error) {
-
-            console.log(
-              "CloudStorage error:",
-              error
-            );
-
-          }
-
-          setStatus(
-            "Returning to MEXO Airdrop..."
-          );
-
-          setTimeout(() => {
-
-            window.Telegram.WebApp.close();
-
-          }, 300);
-
-        }
-      );
-
-      return;
-    }
+    setStatus(
+      "Wallet sent to MEXO Airdrop."
+    );
 
   } catch (error) {
 
     console.error(
-      "Telegram WebApp error:",
+      "sendData error:",
       error
+    );
+
+    setStatus(
+      "Could not send wallet data."
     );
 
   }
 
 
   /*
-   * Fallback
+   * Close the WebApp and return
+   * to the Telegram bot.
    */
 
-  setStatus(
-    "Returning to MEXO Airdrop..."
-  );
+  setTimeout(() => {
+
+    try {
+
+      telegram.close();
+
+    } catch (error) {
+
+      console.error(
+        "Telegram close error:",
+        error
+      );
+
+    }
+
+  }, 300);
 
 });
 
