@@ -61,27 +61,17 @@ async function prepareProof() {
 
   } catch (error) {
     ui.setConnectRequestParameters(null);
-
     setStatus(
       "Wallet verification service is temporarily unavailable."
     );
-
     console.error(error);
   }
 }
 
 async function verifyProof(wallet) {
-
   const proofItem = wallet?.connectItems?.tonProof;
 
-  /*
-   * TON Proof is NOT required for the current MEXO flow.
-   * If the wallet does not return a proof, we still allow
-   * the user to use the connected wallet.
-   */
-
   if (!proofItem || !("proof" in proofItem)) {
-
     proofStatusEl.textContent =
       "Wallet connected successfully.";
 
@@ -93,7 +83,6 @@ async function verifyProof(wallet) {
   }
 
   if (!PROOF_VERIFY_URL) {
-
     proofStatusEl.textContent =
       "Wallet connected successfully.";
 
@@ -105,7 +94,6 @@ async function verifyProof(wallet) {
   }
 
   try {
-
     proofStatusEl.textContent =
       "Verifying wallet ownership...";
 
@@ -132,14 +120,11 @@ async function verifyProof(wallet) {
     proofStatusEl.textContent =
       "✓ Wallet ownership verified.";
 
-    setStatus(
-      "Wallet verified successfully."
-    );
+    setStatus("Wallet verified successfully.");
 
     useWalletButton.classList.remove("hidden");
 
   } catch (error) {
-
     proofStatusEl.textContent =
       "Wallet verification failed.";
 
@@ -154,13 +139,10 @@ async function verifyProof(wallet) {
 }
 
 ui.onStatusChange(async (wallet) => {
-
   connectedWallet = wallet;
 
   if (!wallet) {
-
     walletBox.classList.add("hidden");
-
     useWalletButton.classList.add("hidden");
 
     setStatus(
@@ -175,9 +157,7 @@ ui.onStatusChange(async (wallet) => {
   walletBox.classList.remove("hidden");
 
   walletAddressEl.textContent =
-    shortAddress(
-      wallet.account?.address || ""
-    );
+    shortAddress(wallet.account?.address || "");
 
   setStatus("Wallet connected.");
 
@@ -185,24 +165,19 @@ ui.onStatusChange(async (wallet) => {
 });
 
 
-/*
- * USE THIS WALLET
- *
- * After the wallet is connected:
- * MEXO Wallet → Telegram Bot
- */
+/* =========================================
+   USE THIS WALLET
+   ========================================= */
 
-useWalletButton.addEventListener("click", async () => {
+useWalletButton.addEventListener("click", () => {
 
   const address =
     connectedWallet?.account?.address;
 
   if (!address) {
-
     setStatus(
       "Wallet address is not available."
     );
-
     return;
   }
 
@@ -210,35 +185,82 @@ useWalletButton.addEventListener("click", async () => {
     "Returning to MEXO Airdrop..."
   );
 
-  const botUrl =
-    "https://t.me/mexoairdrop_bot?start=wallet_" +
-    encodeURIComponent(address);
+  const startParameter =
+    "wallet_" + address;
+
+  const telegramHttps =
+    "https://t.me/mexoairdrop_bot?start=" +
+    encodeURIComponent(startParameter);
+
+  const telegramApp =
+    "tg://resolve?domain=mexoairdrop_bot&start=" +
+    encodeURIComponent(startParameter);
 
 
-  /*
-   * When MEXO Wallet is opened inside Telegram,
-   * use Telegram WebApp's official link handler.
-   */
+  /* Method 1: Telegram WebApp */
+  try {
+    if (
+      window.Telegram &&
+      window.Telegram.WebApp &&
+      typeof window.Telegram.WebApp.openTelegramLink === "function"
+    ) {
+      window.Telegram.WebApp.openTelegramLink(
+        telegramHttps
+      );
 
-  if (
-    window.Telegram &&
-    window.Telegram.WebApp &&
-    typeof window.Telegram.WebApp.openTelegramLink === "function"
-  ) {
-
-    window.Telegram.WebApp.openTelegramLink(
-      botUrl
+      return;
+    }
+  } catch (error) {
+    console.log(
+      "Telegram WebApp method failed:",
+      error
     );
-
-    return;
   }
 
 
-  /*
-   * Fallback for normal browser.
-   */
+  /* Method 2: Telegram application URI */
+  try {
+    window.location.href = telegramApp;
+  } catch (error) {
+    console.log(
+      "Telegram app URI failed:",
+      error
+    );
+  }
 
-  window.location.href = botUrl;
+
+  /* Method 3: HTTPS Telegram link */
+  setTimeout(() => {
+
+    try {
+
+      const link =
+        document.createElement("a");
+
+      link.href = telegramHttps;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+
+      document.body.appendChild(link);
+
+      link.click();
+
+      link.remove();
+
+    } catch (error) {
+
+      console.log(
+        "Telegram HTTPS fallback failed:",
+        error
+      );
+
+      window.open(
+        telegramHttps,
+        "_blank"
+      );
+    }
+
+  }, 500);
 
 });
 
