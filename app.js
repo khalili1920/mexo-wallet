@@ -200,100 +200,87 @@ useWalletButton.addEventListener(
     }
 
 
-    /* ---------------------------------------
-       Check Telegram WebApp
-    --------------------------------------- */
+    /* =======================================
+       CREATE START PARAMETER
+    ======================================= */
 
-    if (!telegram) {
+    const startParameter =
+      "wallet_" + address;
 
-      setStatus(
-        "Telegram WebApp is not available."
+
+    /* =======================================
+       TELEGRAM BOT LINK
+    ======================================= */
+
+    const botUsername =
+      "mexoairdrop_bot";
+
+
+    const telegramUrl =
+      "https://t.me/" +
+      botUsername +
+      "?start=" +
+      encodeURIComponent(
+        startParameter
       );
 
-      return;
 
-    }
+    /* =======================================
+       STATUS
+    ======================================= */
 
-
-    /* ---------------------------------------
-       Prepare wallet data
-    --------------------------------------- */
-
-    const data =
-      JSON.stringify({
-
-        type:
-          "mexo_wallet_connected",
-
-        wallet_address:
-          address
-
-      });
-
-
-    console.log(
-      "MEXO Wallet Data:",
-      data
+    setStatus(
+      "Returning to MEXO Airdrop..."
     );
 
 
-    /* ---------------------------------------
-       Send wallet data to Telegram
-    --------------------------------------- */
+    /* =======================================
+       RETURN TO TELEGRAM
+    ======================================= */
 
     try {
 
-      telegram.sendData(
-        data
-      );
+      if (
+        telegram &&
+        typeof telegram.openTelegramLink ===
+          "function"
+      ) {
 
+        telegram.openTelegramLink(
+          telegramUrl
+        );
 
-      setStatus(
-        "Wallet sent to MEXO Airdrop."
-      );
+        return;
 
+      }
 
     } catch (error) {
 
       console.error(
-        "sendData error:",
+        "openTelegramLink error:",
         error
       );
-
-
-      setStatus(
-        "Could not send wallet data."
-      );
-
-
-      return;
 
     }
 
 
-    /* ---------------------------------------
-       Return to Telegram Bot
-    --------------------------------------- */
+    /* =======================================
+       FALLBACK
+    ======================================= */
 
-    setTimeout(
-      () => {
+    try {
 
-        try {
+      window.location.href =
+        telegramUrl;
 
-          telegram.close();
+    } catch (error) {
 
-        } catch (error) {
+      console.error(
+        "Telegram redirect error:",
+        error
+      );
 
-          console.error(
-            "Telegram close error:",
-            error
-          );
-
-        }
-
-      },
-      500
-    );
+    }
 
   }
 );
