@@ -136,6 +136,7 @@ async function verifyProof(wallet) {
     "Wallet connected."
   );
 
+
   if (useWalletButton) {
 
     useWalletButton.classList.remove(
@@ -231,11 +232,6 @@ if (useWalletButton) {
     "click",
     function () {
 
-      console.log(
-        "MEXO: USE THIS WALLET clicked"
-      );
-
-
       const address =
         connectedWallet?.account?.address;
 
@@ -251,12 +247,6 @@ if (useWalletButton) {
       }
 
 
-      console.log(
-        "MEXO WALLET ADDRESS:",
-        address
-      );
-
-
       /* =====================================
          CREATE START PARAMETER
       ===================================== */
@@ -266,24 +256,18 @@ if (useWalletButton) {
 
 
       /* =====================================
-         TELEGRAM BOT
+         BOT LINK
       ===================================== */
 
-      const botUsername =
-        "mexoairdrop_bot";
-
-
       const telegramUrl =
-        "https://t.me/" +
-        botUsername +
-        "?start=" +
+        "https://t.me/mexoairdrop_bot?start=" +
         encodeURIComponent(
           startParameter
         );
 
 
       console.log(
-        "MEXO RETURN URL:",
+        "MEXO RETURN:",
         telegramUrl
       );
 
@@ -294,25 +278,29 @@ if (useWalletButton) {
 
 
       /* =====================================
-         CLOSE MINI APP FIRST
+         OPEN TELEGRAM LINK
       ===================================== */
 
       try {
 
         if (
           telegram &&
-          typeof telegram.close ===
+          typeof telegram.openTelegramLink ===
             "function"
         ) {
 
-          telegram.close();
+          telegram.openTelegramLink(
+            telegramUrl
+          );
+
+          return;
 
         }
 
       } catch (error) {
 
         console.error(
-          "Telegram close error:",
+          "openTelegramLink failed:",
           error
         );
 
@@ -320,37 +308,29 @@ if (useWalletButton) {
 
 
       /* =====================================
-         OPEN BOT
+         FALLBACK
       ===================================== */
 
-      setTimeout(
-        function () {
+      try {
 
-          try {
+        window.open(
+          telegramUrl,
+          "_blank"
+        );
 
-            window.location.href =
-              telegramUrl;
+      } catch (error) {
 
-          } catch (error) {
+        console.error(
+          "Telegram fallback failed:",
+          error
+        );
 
-            console.error(
-              "Telegram redirect error:",
-              error
-            );
+        window.location.href =
+          telegramUrl;
 
-          }
-
-        },
-        300
-      );
+      }
 
     }
-  );
-
-} else {
-
-  console.error(
-    "MEXO: use-wallet button not found"
   );
 
 }
