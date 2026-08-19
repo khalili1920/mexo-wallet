@@ -15,17 +15,13 @@ const telegram =
 if (telegram) {
 
   try {
-
     telegram.ready();
     telegram.expand();
-
   } catch (error) {
-
     console.error(
       "Telegram WebApp initialization error:",
       error
     );
-
   }
 
 }
@@ -73,10 +69,7 @@ let connectedWallet = null;
 function setStatus(text) {
 
   if (statusEl) {
-
-    statusEl.textContent =
-      text;
-
+    statusEl.textContent = text;
   }
 
 }
@@ -85,17 +78,13 @@ function setStatus(text) {
 function shortAddress(address) {
 
   if (!address) {
-
     return "";
-
   }
 
   return address.length > 18
-
     ? address.slice(0, 9) +
       "..." +
       address.slice(-8)
-
     : address;
 
 }
@@ -107,16 +96,11 @@ function shortAddress(address) {
 
 async function prepareProof() {
 
-  try {
+  if (!PROOF_PAYLOAD_URL) {
 
     ui.setConnectRequestParameters(null);
 
-  } catch (error) {
-
-    console.error(
-      "Proof preparation error:",
-      error
-    );
+    return;
 
   }
 
@@ -125,17 +109,16 @@ async function prepareProof() {
 
 async function verifyProof(wallet) {
 
-  if (proofStatusEl) {
-
-    proofStatusEl.textContent =
-      "Wallet connected successfully.";
-
+  if (!proofStatusEl) {
+    return;
   }
+
+  proofStatusEl.textContent =
+    "Wallet connected successfully.";
 
   setStatus(
     "Wallet connected."
   );
-
 
   if (useWalletButton) {
 
@@ -155,27 +138,18 @@ async function verifyProof(wallet) {
 ui.onStatusChange(
   async (wallet) => {
 
-    connectedWallet =
-      wallet;
+    connectedWallet = wallet;
 
 
     if (!wallet) {
 
-      if (walletBox) {
+      walletBox.classList.add(
+        "hidden"
+      );
 
-        walletBox.classList.add(
-          "hidden"
-        );
-
-      }
-
-      if (useWalletButton) {
-
-        useWalletButton.classList.add(
-          "hidden"
-        );
-
-      }
+      useWalletButton.classList.add(
+        "hidden"
+      );
 
       setStatus(
         "Connect your TON Wallet to continue."
@@ -188,25 +162,17 @@ ui.onStatusChange(
     }
 
 
-    if (walletBox) {
-
-      walletBox.classList.remove(
-        "hidden"
-      );
-
-    }
+    walletBox.classList.remove(
+      "hidden"
+    );
 
 
     const address =
       wallet.account?.address || "";
 
 
-    if (walletAddressEl) {
-
-      walletAddressEl.textContent =
-        shortAddress(address);
-
-    }
+    walletAddressEl.textContent =
+      shortAddress(address);
 
 
     setStatus(
@@ -214,9 +180,7 @@ ui.onStatusChange(
     );
 
 
-    await verifyProof(
-      wallet
-    );
+    await verifyProof(wallet);
 
   }
 );
@@ -226,114 +190,109 @@ ui.onStatusChange(
    USE THIS WALLET
 ========================================= */
 
-if (useWalletButton) {
+useWalletButton.addEventListener(
+  "click",
+  () => {
 
-  useWalletButton.addEventListener(
-    "click",
-    function () {
-
-      const address =
-        connectedWallet?.account?.address;
+    const address =
+      connectedWallet?.account?.address;
 
 
-      if (!address) {
+    if (!address) {
 
-        setStatus(
-          "Wallet address is not available."
+      setStatus(
+        "Wallet address is not available."
+      );
+
+      return;
+
+    }
+
+
+    /* =======================================
+       SAVE WALLET IN TELEGRAM CLOUD STORAGE
+    ======================================= */
+
+    try {
+
+      if (
+        telegram &&
+        telegram.CloudStorage
+      ) {
+
+        telegram.CloudStorage.setItem(
+          "mexo_wallet_address",
+          address,
+          function(error) {
+
+            if (error) {
+
+              console.error(
+                "CloudStorage error:",
+                error
+              );
+
+              setStatus(
+                "Could not save wallet."
+              );
+
+              return;
+
+            }
+
+
+            setStatus(
+              "Returning to MEXO Airdrop..."
+            );
+
+
+            /* ===============================
+               RETURN TO TELEGRAM BOT
+            =============================== */
+
+            setTimeout(
+              () => {
+
+                try {
+
+                  telegram.close();
+
+                } catch (error) {
+
+                  console.error(
+                    "Telegram close error:",
+                    error
+                  );
+
+                }
+
+              },
+              300
+            );
+
+          }
         );
 
         return;
 
       }
 
+    } catch (error) {
 
-      /* =====================================
-         CREATE START PARAMETER
-      ===================================== */
-
-      const startParameter =
-        "wallet_" + address;
-
-
-      /* =====================================
-         BOT LINK
-      ===================================== */
-
-      const telegramUrl =
-        "https://t.me/mexoairdrop_bot?start=" +
-        encodeURIComponent(
-          startParameter
-        );
-
-
-      console.log(
-        "MEXO RETURN:",
-        telegramUrl
+      console.error(
+        "Telegram WebApp error:",
+        error
       );
-
-
-      setStatus(
-        "Returning to MEXO Airdrop..."
-      );
-
-
-      /* =====================================
-         OPEN TELEGRAM LINK
-      ===================================== */
-
-      try {
-
-        if (
-          telegram &&
-          typeof telegram.openTelegramLink ===
-            "function"
-        ) {
-
-          telegram.openTelegramLink(
-            telegramUrl
-          );
-
-          return;
-
-        }
-
-      } catch (error) {
-
-        console.error(
-          "openTelegramLink failed:",
-          error
-        );
-
-      }
-
-
-      /* =====================================
-         FALLBACK
-      ===================================== */
-
-      try {
-
-        window.open(
-          telegramUrl,
-          "_blank"
-        );
-
-      } catch (error) {
-
-        console.error(
-          "Telegram fallback failed:",
-          error
-        );
-
-        window.location.href =
-          telegramUrl;
-
-      }
 
     }
-  );
 
-}
+
+    setStatus(
+      "Telegram WebApp is not available."
+    );
+
+  }
+);
 
 
 /* =========================================
