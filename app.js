@@ -136,7 +136,6 @@ async function verifyProof(wallet) {
     "Wallet connected."
   );
 
-
   if (useWalletButton) {
 
     useWalletButton.classList.remove(
@@ -158,10 +157,6 @@ ui.onStatusChange(
     connectedWallet =
       wallet;
 
-
-    /* =====================================
-       NO WALLET
-    ===================================== */
 
     if (!wallet) {
 
@@ -185,17 +180,12 @@ ui.onStatusChange(
         "Connect your TON Wallet to continue."
       );
 
-
       await prepareProof();
 
       return;
 
     }
 
-
-    /* =====================================
-       WALLET CONNECTED
-    ===================================== */
 
     if (walletBox) {
 
@@ -242,33 +232,13 @@ if (useWalletButton) {
     function () {
 
       console.log(
-        "USE THIS WALLET CLICKED"
+        "MEXO: USE THIS WALLET clicked"
       );
 
-
-      /* =====================================
-         GET CONNECTED WALLET
-      ===================================== */
 
       const address =
         connectedWallet?.account?.address;
 
-
-      console.log(
-        "CONNECTED WALLET:",
-        connectedWallet
-      );
-
-
-      console.log(
-        "WALLET ADDRESS:",
-        address
-      );
-
-
-      /* =====================================
-         CHECK ADDRESS
-      ===================================== */
 
       if (!address) {
 
@@ -281,6 +251,12 @@ if (useWalletButton) {
       }
 
 
+      console.log(
+        "MEXO WALLET ADDRESS:",
+        address
+      );
+
+
       /* =====================================
          CREATE START PARAMETER
       ===================================== */
@@ -289,23 +265,13 @@ if (useWalletButton) {
         "wallet_" + address;
 
 
-      console.log(
-        "START PARAMETER:",
-        startParameter
-      );
-
-
       /* =====================================
-         BOT USERNAME
+         TELEGRAM BOT
       ===================================== */
 
       const botUsername =
         "mexoairdrop_bot";
 
-
-      /* =====================================
-         TELEGRAM HTTPS LINK
-      ===================================== */
 
       const telegramUrl =
         "https://t.me/" +
@@ -317,14 +283,10 @@ if (useWalletButton) {
 
 
       console.log(
-        "TELEGRAM URL:",
+        "MEXO RETURN URL:",
         telegramUrl
       );
 
-
-      /* =====================================
-         STATUS
-      ===================================== */
 
       setStatus(
         "Returning to MEXO Airdrop..."
@@ -332,29 +294,25 @@ if (useWalletButton) {
 
 
       /* =====================================
-         OPEN TELEGRAM LINK
+         CLOSE MINI APP FIRST
       ===================================== */
 
       try {
 
         if (
           telegram &&
-          typeof telegram.openTelegramLink ===
+          typeof telegram.close ===
             "function"
         ) {
 
-          telegram.openTelegramLink(
-            telegramUrl
-          );
-
-          return;
+          telegram.close();
 
         }
 
       } catch (error) {
 
         console.error(
-          "Telegram openTelegramLink error:",
+          "Telegram close error:",
           error
         );
 
@@ -362,26 +320,29 @@ if (useWalletButton) {
 
 
       /* =====================================
-         FALLBACK
+         OPEN BOT
       ===================================== */
 
-      try {
+      setTimeout(
+        function () {
 
-        window.location.href =
-          telegramUrl;
+          try {
 
-      } catch (error) {
+            window.location.href =
+              telegramUrl;
 
-        console.error(
-          "Telegram redirect error:",
-          error
-        );
+          } catch (error) {
 
-        setStatus(
-          "Could not return to Telegram."
-        );
+            console.error(
+              "Telegram redirect error:",
+              error
+            );
 
-      }
+          }
+
+        },
+        300
+      );
 
     }
   );
@@ -389,11 +350,7 @@ if (useWalletButton) {
 } else {
 
   console.error(
-    "USE THIS WALLET button was not found."
-  );
-
-  setStatus(
-    "USE THIS WALLET button is unavailable."
+    "MEXO: use-wallet button not found"
   );
 
 }
