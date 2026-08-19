@@ -18,11 +18,6 @@ const useWalletButton = document.getElementById("use-wallet");
 
 let connectedWallet = null;
 
-
-/* ================================
-   BASIC FUNCTIONS
-================================ */
-
 function setStatus(text) {
   if (statusEl) {
     statusEl.textContent = text;
@@ -34,35 +29,18 @@ function shortAddress(address) {
     return "";
   }
 
-  if (address.length > 18) {
-    return address.slice(0, 9) + "..." + address.slice(-8);
-  }
-
-  return address;
+  return address.length > 18
+    ? address.slice(0, 9) + "..." + address.slice(-8)
+    : address;
 }
 
-
-/* ================================
-   TON PROOF
-================================ */
-
 async function prepareProof() {
-
-  /*
-   * Proof is intentionally disabled.
-   * MEXO does not currently require
-   * wallet ownership verification.
-   */
-
   if (!PROOF_PAYLOAD_URL) {
-
     ui.setConnectRequestParameters(null);
-
     return;
   }
 
   try {
-
     ui.setConnectRequestParameters({
       state: "loading"
     });
@@ -89,7 +67,6 @@ async function prepareProof() {
     });
 
   } catch (error) {
-
     ui.setConnectRequestParameters(null);
 
     setStatus(
@@ -100,102 +77,24 @@ async function prepareProof() {
   }
 }
 
-
-/* ================================
-   VERIFY / DISPLAY WALLET
-================================ */
-
 async function verifyProof(wallet) {
 
   /*
-   * TON Proof is not required.
+   * TON Proof is intentionally not required
+   * for the current MEXO withdrawal flow.
    */
 
   if (!proofStatusEl) {
     return;
   }
 
-  const proofItem = wallet?.connectItems?.tonProof;
+  proofStatusEl.textContent =
+    "Wallet connected successfully.";
 
-  if (!proofItem || !("proof" in proofItem)) {
+  setStatus("Wallet connected.");
 
-    proofStatusEl.textContent =
-      "Wallet connected successfully.";
-
-    setStatus("Wallet connected.");
-
-    useWalletButton.classList.remove("hidden");
-
-    return;
-  }
-
-
-  if (!PROOF_VERIFY_URL) {
-
-    proofStatusEl.textContent =
-      "Wallet connected successfully.";
-
-    setStatus("Wallet connected.");
-
-    useWalletButton.classList.remove("hidden");
-
-    return;
-  }
-
-
-  try {
-
-    proofStatusEl.textContent =
-      "Verifying wallet ownership...";
-
-    const response = await fetch(PROOF_VERIFY_URL, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json"
-      },
-      credentials: "include",
-      body: JSON.stringify({
-        account: wallet.account,
-        proof: proofItem.proof
-      })
-    });
-
-    const result = await response.json();
-
-    if (!response.ok || !result.verified) {
-      throw new Error(
-        result.error || "verification failed"
-      );
-    }
-
-    proofStatusEl.textContent =
-      "✓ Wallet ownership verified.";
-
-    setStatus(
-      "Wallet verified successfully."
-    );
-
-    useWalletButton.classList.remove("hidden");
-
-  } catch (error) {
-
-    proofStatusEl.textContent =
-      "Wallet verification failed.";
-
-    setStatus(
-      "Please disconnect and connect the wallet again."
-    );
-
-    useWalletButton.classList.add("hidden");
-
-    console.error(error);
-  }
+  useWalletButton.classList.remove("hidden");
 }
-
-
-/* ================================
-   WALLET STATUS
-================================ */
 
 ui.onStatusChange(async (wallet) => {
 
@@ -216,35 +115,28 @@ ui.onStatusChange(async (wallet) => {
     return;
   }
 
-
   walletBox.classList.remove("hidden");
-
 
   const address =
     wallet.account?.address || "";
 
-
   walletAddressEl.textContent =
     shortAddress(address);
 
-
   setStatus("Wallet connected.");
 
-
   await verifyProof(wallet);
-
 });
 
 
-/* ================================
+/* =========================================
    USE THIS WALLET
-================================ */
+========================================= */
 
 useWalletButton.addEventListener("click", () => {
 
   const address =
     connectedWallet?.account?.address;
-
 
   if (!address) {
 
@@ -257,48 +149,66 @@ useWalletButton.addEventListener("click", () => {
 
 
   /*
-   * TEST ONLY:
-   * Check whether Telegram WebApp API
-   * is actually available.
+   * Save the selected wallet temporarily
+   * inside the Telegram WebApp.
    */
 
-  const telegramAvailable =
-    !!(
+  try {
+
+    if (
       window.Telegram &&
       window.Telegram.WebApp
-    );
+    ) {
 
+      window.Telegram.WebApp.CloudStorage.setItem(
+        "mexo_wallet_address",
+        address,
+        function(error) {
 
-  if (telegramAvailable) {
+          if (error) {
 
-    setStatus(
-      "Telegram WebApp: AVAILABLE"
-    );
+            console.log(
+              "CloudStorage error:",
+              error
+            );
 
-  } else {
+          }
 
-    setStatus(
-      "Telegram WebApp: NOT AVAILABLE"
+          setStatus(
+            "Returning to MEXO Airdrop..."
+          );
+
+          setTimeout(() => {
+
+            window.Telegram.WebApp.close();
+
+          }, 300);
+
+        }
+      );
+
+      return;
+    }
+
+  } catch (error) {
+
+    console.error(
+      "Telegram WebApp error:",
+      error
     );
 
   }
 
 
-  console.log(
-    "MEXO Wallet Address:",
-    address
-  );
+  /*
+   * Fallback
+   */
 
-  console.log(
-    "Telegram WebApp Available:",
-    telegramAvailable
+  setStatus(
+    "Returning to MEXO Airdrop..."
   );
 
 });
 
-
-/* ================================
-   START
-================================ */
 
 prepareProof();
