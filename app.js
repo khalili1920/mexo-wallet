@@ -15,13 +15,17 @@ const telegram =
 if (telegram) {
 
   try {
+
     telegram.ready();
     telegram.expand();
+
   } catch (error) {
+
     console.error(
       "Telegram WebApp initialization error:",
       error
     );
+
   }
 
 }
@@ -31,11 +35,12 @@ if (telegram) {
    TON CONNECT
 ========================================= */
 
-const ui = new TON_CONNECT_UI.TonConnectUI({
-  manifestUrl: MANIFEST_URL,
-  buttonRootId: "ton-connect",
-  restoreConnection: true
-});
+const ui =
+  new TON_CONNECT_UI.TonConnectUI({
+    manifestUrl: MANIFEST_URL,
+    buttonRootId: "ton-connect",
+    restoreConnection: true
+  });
 
 
 /* =========================================
@@ -68,7 +73,10 @@ let connectedWallet = null;
 function setStatus(text) {
 
   if (statusEl) {
-    statusEl.textContent = text;
+
+    statusEl.textContent =
+      text;
+
   }
 
 }
@@ -77,13 +85,17 @@ function setStatus(text) {
 function shortAddress(address) {
 
   if (!address) {
+
     return "";
+
   }
 
   return address.length > 18
+
     ? address.slice(0, 9) +
       "..." +
       address.slice(-8)
+
     : address;
 
 }
@@ -95,7 +107,18 @@ function shortAddress(address) {
 
 async function prepareProof() {
 
-  ui.setConnectRequestParameters(null);
+  try {
+
+    ui.setConnectRequestParameters(null);
+
+  } catch (error) {
+
+    console.error(
+      "Proof preparation error:",
+      error
+    );
+
+  }
 
 }
 
@@ -113,6 +136,7 @@ async function verifyProof(wallet) {
     "Wallet connected."
   );
 
+
   if (useWalletButton) {
 
     useWalletButton.classList.remove(
@@ -128,162 +152,251 @@ async function verifyProof(wallet) {
    WALLET STATUS
 ========================================= */
 
-ui.onStatusChange(async (wallet) => {
+ui.onStatusChange(
+  async (wallet) => {
 
-  connectedWallet = wallet;
-
-
-  if (!wallet) {
-
-    walletBox.classList.add(
-      "hidden"
-    );
-
-    useWalletButton.classList.add(
-      "hidden"
-    );
-
-    setStatus(
-      "Connect your TON Wallet to continue."
-    );
-
-    await prepareProof();
-
-    return;
-
-  }
+    connectedWallet =
+      wallet;
 
 
-  walletBox.classList.remove(
-    "hidden"
-  );
+    /* =====================================
+       NO WALLET
+    ===================================== */
 
+    if (!wallet) {
 
-  const address =
-    wallet.account?.address || "";
+      if (walletBox) {
 
+        walletBox.classList.add(
+          "hidden"
+        );
 
-  walletAddressEl.textContent =
-    shortAddress(address);
+      }
 
+      if (useWalletButton) {
 
-  setStatus(
-    "Wallet connected."
-  );
+        useWalletButton.classList.add(
+          "hidden"
+        );
 
-
-  await verifyProof(wallet);
-
-});
-
-
-/* =========================================
-   USE THIS WALLET
-========================================= */
-
-useWalletButton.addEventListener(
-  "click",
-  () => {
-
-    const address =
-      connectedWallet?.account?.address;
-
-
-    if (!address) {
+      }
 
       setStatus(
-        "Wallet address is not available."
+        "Connect your TON Wallet to continue."
       );
+
+
+      await prepareProof();
 
       return;
 
     }
 
 
-    /* =======================================
-       CREATE START PARAMETER
-    ======================================= */
+    /* =====================================
+       WALLET CONNECTED
+    ===================================== */
 
-    const startParameter =
-      "wallet_" + address;
+    if (walletBox) {
 
-
-    /* =======================================
-       TELEGRAM BOT LINK
-    ======================================= */
-
-    const botUsername =
-      "mexoairdrop_bot";
-
-
-    const telegramUrl =
-      "https://t.me/" +
-      botUsername +
-      "?start=" +
-      encodeURIComponent(
-        startParameter
+      walletBox.classList.remove(
+        "hidden"
       );
 
+    }
 
-    /* =======================================
-       STATUS
-    ======================================= */
+
+    const address =
+      wallet.account?.address || "";
+
+
+    if (walletAddressEl) {
+
+      walletAddressEl.textContent =
+        shortAddress(address);
+
+    }
+
 
     setStatus(
-      "Returning to MEXO Airdrop..."
+      "Wallet connected."
     );
 
 
-    /* =======================================
-       RETURN TO TELEGRAM
-    ======================================= */
+    await verifyProof(
+      wallet
+    );
 
-    try {
+  }
+);
 
-      if (
-        telegram &&
-        typeof telegram.openTelegramLink ===
-          "function"
-      ) {
 
-        telegram.openTelegramLink(
-          telegramUrl
+/* =========================================
+   USE THIS WALLET
+========================================= */
+
+if (useWalletButton) {
+
+  useWalletButton.addEventListener(
+    "click",
+    function () {
+
+      console.log(
+        "USE THIS WALLET CLICKED"
+      );
+
+
+      /* =====================================
+         GET CONNECTED WALLET
+      ===================================== */
+
+      const address =
+        connectedWallet?.account?.address;
+
+
+      console.log(
+        "CONNECTED WALLET:",
+        connectedWallet
+      );
+
+
+      console.log(
+        "WALLET ADDRESS:",
+        address
+      );
+
+
+      /* =====================================
+         CHECK ADDRESS
+      ===================================== */
+
+      if (!address) {
+
+        setStatus(
+          "Wallet address is not available."
         );
 
         return;
 
       }
 
-    } catch (error) {
 
-      console.error(
-        "openTelegramLink error:",
-        error
+      /* =====================================
+         CREATE START PARAMETER
+      ===================================== */
+
+      const startParameter =
+        "wallet_" + address;
+
+
+      console.log(
+        "START PARAMETER:",
+        startParameter
       );
 
-    }
+
+      /* =====================================
+         BOT USERNAME
+      ===================================== */
+
+      const botUsername =
+        "mexoairdrop_bot";
 
 
-    /* =======================================
-       FALLBACK
-    ======================================= */
+      /* =====================================
+         TELEGRAM HTTPS LINK
+      ===================================== */
 
-    try {
+      const telegramUrl =
+        "https://t.me/" +
+        botUsername +
+        "?start=" +
+        encodeURIComponent(
+          startParameter
+        );
 
-      window.location.href =
-        telegramUrl;
 
-    } catch (error) {
-
-      console.error(
-        "Telegram redirect error:",
-        error
+      console.log(
+        "TELEGRAM URL:",
+        telegramUrl
       );
 
-    }
 
-  }
-);
+      /* =====================================
+         STATUS
+      ===================================== */
+
+      setStatus(
+        "Returning to MEXO Airdrop..."
+      );
+
+
+      /* =====================================
+         OPEN TELEGRAM LINK
+      ===================================== */
+
+      try {
+
+        if (
+          telegram &&
+          typeof telegram.openTelegramLink ===
+            "function"
+        ) {
+
+          telegram.openTelegramLink(
+            telegramUrl
+          );
+
+          return;
+
+        }
+
+      } catch (error) {
+
+        console.error(
+          "Telegram openTelegramLink error:",
+          error
+        );
+
+      }
+
+
+      /* =====================================
+         FALLBACK
+      ===================================== */
+
+      try {
+
+        window.location.href =
+          telegramUrl;
+
+      } catch (error) {
+
+        console.error(
+          "Telegram redirect error:",
+          error
+        );
+
+        setStatus(
+          "Could not return to Telegram."
+        );
+
+      }
+
+    }
+  );
+
+} else {
+
+  console.error(
+    "USE THIS WALLET button was not found."
+  );
+
+  setStatus(
+    "USE THIS WALLET button is unavailable."
+  );
+
+}
 
 
 /* =========================================
