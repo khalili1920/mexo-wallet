@@ -4,13 +4,32 @@ const MANIFEST_URL =
 const PROOF_PAYLOAD_URL = "";
 const PROOF_VERIFY_URL = "";
 
+
+/* =========================================
+   TELEGRAM WEB APP
+========================================= */
+
 const telegram =
   window.Telegram?.WebApp || null;
 
 if (telegram) {
-  telegram.ready();
-  telegram.expand();
+
+  try {
+    telegram.ready();
+    telegram.expand();
+  } catch (error) {
+    console.error(
+      "Telegram WebApp initialization error:",
+      error
+    );
+  }
+
 }
+
+
+/* =========================================
+   TON CONNECT
+========================================= */
 
 const ui =
   new TON_CONNECT_UI.TonConnectUI({
@@ -18,6 +37,11 @@ const ui =
     buttonRootId: "ton-connect",
     restoreConnection: true
   });
+
+
+/* =========================================
+   ELEMENTS
+========================================= */
 
 const statusEl =
   document.getElementById("status");
@@ -34,181 +58,278 @@ const proofStatusEl =
 const useWalletButton =
   document.getElementById("use-wallet");
 
+
 let connectedWallet = null;
 
 
+/* =========================================
+   HELPERS
+========================================= */
+
 function setStatus(text) {
+
   if (statusEl) {
     statusEl.textContent = text;
   }
+
 }
 
 
 function shortAddress(address) {
+
   if (!address) {
     return "";
   }
 
   return address.length > 18
-    ? address.slice(0, 9) + "..." + address.slice(-8)
+    ? address.slice(0, 9) +
+      "..." +
+      address.slice(-8)
     : address;
+
 }
 
 
+/* =========================================
+   PROOF
+========================================= */
+
 async function prepareProof() {
-  ui.setConnectRequestParameters(null);
+
+  try {
+
+    ui.setConnectRequestParameters(null);
+
+  } catch (error) {
+
+    console.error(
+      "Proof preparation error:",
+      error
+    );
+
+  }
+
 }
 
 
 async function verifyProof(wallet) {
 
   if (proofStatusEl) {
+
     proofStatusEl.textContent =
       "Wallet connected successfully.";
+
   }
 
-  setStatus("Wallet connected.");
+  setStatus(
+    "Wallet connected."
+  );
 
   if (useWalletButton) {
-    useWalletButton.classList.remove("hidden");
+
+    useWalletButton.classList.remove(
+      "hidden"
+    );
+
   }
+
 }
 
+
+/* =========================================
+   WALLET STATUS
+========================================= */
 
 ui.onStatusChange(async (wallet) => {
 
   connectedWallet = wallet;
 
+
   if (!wallet) {
 
-    walletBox.classList.add("hidden");
+    if (walletBox) {
 
-    useWalletButton.classList.add("hidden");
+      walletBox.classList.add(
+        "hidden"
+      );
+
+    }
+
+
+    if (useWalletButton) {
+
+      useWalletButton.classList.add(
+        "hidden"
+      );
+
+    }
+
 
     setStatus(
       "Connect your TON Wallet to continue."
     );
 
+
     await prepareProof();
 
     return;
+
   }
 
-  walletBox.classList.remove("hidden");
+
+  if (walletBox) {
+
+    walletBox.classList.remove(
+      "hidden"
+    );
+
+  }
+
 
   const address =
     wallet.account?.address || "";
 
-  walletAddressEl.textContent =
-    shortAddress(address);
 
-  setStatus("Wallet connected.");
+  if (walletAddressEl) {
+
+    walletAddressEl.textContent =
+      shortAddress(address);
+
+  }
+
+
+  setStatus(
+    "Wallet connected."
+  );
+
 
   await verifyProof(wallet);
+
 });
 
 
-useWalletButton.addEventListener(
-  "click",
-  () => {
+/* =========================================
+   USE THIS WALLET
+========================================= */
 
-    const address =
-      connectedWallet?.account?.address;
+if (useWalletButton) {
 
-    if (!address) {
+  useWalletButton.addEventListener(
+    "click",
+    () => {
 
-      setStatus(
-        "Wallet address is not available."
+      const address =
+        connectedWallet?.account?.address;
+
+
+      if (!address) {
+
+        setStatus(
+          "Wallet address is not available."
+        );
+
+        return;
+
+      }
+
+
+      if (!telegram) {
+
+        setStatus(
+          "Telegram WebApp is not available."
+        );
+
+        return;
+
+      }
+
+
+      /* -----------------------------------
+         CREATE WALLET DATA
+      ----------------------------------- */
+
+      const data =
+        JSON.stringify({
+
+          type:
+            "mexo_wallet_connected",
+
+          wallet_address:
+            address
+
+        });
+
+
+      console.log(
+        "MEXO Wallet Data:",
+        data
       );
 
-      return;
-    }
 
-
-    if (!telegram) {
-
-      setStatus(
-        "Telegram WebApp is not available."
-      );
-
-      return;
-    }
-
-
-    setStatus(
-      "Returning to MEXO Airdrop..."
-    );
-
-
-    const startParameter =
-      "wallet_" + address;
-
-
-    const telegramUrl =
-      "https://t.me/mexoairdrop_bot?start=" +
-      encodeURIComponent(startParameter);
-
-
-    /*
-     * Open the bot with wallet parameter
-     */
-
-    try {
-
-      telegram.openTelegramLink(
-        telegramUrl
-      );
-
-    } catch (error) {
-
-      console.error(
-        "openTelegramLink error:",
-        error
-      );
+      /* -----------------------------------
+         SEND DATA TO TELEGRAM BOT
+      ----------------------------------- */
 
       try {
 
-        window.location.href =
-          telegramUrl;
+        telegram.sendData(
+          data
+        );
 
-      } catch (fallbackError) {
+
+        setStatus(
+          "Wallet sent to MEXO Airdrop."
+        );
+
+
+        /*
+         * Telegram closes the Mini App
+         * after sendData().
+         */
+
+        setTimeout(
+          () => {
+
+            try {
+
+              telegram.close();
+
+            } catch (error) {
+
+              console.error(
+                "Telegram close error:",
+                error
+              );
+
+            }
+
+          },
+          500
+        );
+
+
+      } catch (error) {
 
         console.error(
-          "Telegram fallback error:",
-          fallbackError
+          "sendData error:",
+          error
+        );
+
+
+        setStatus(
+          "Could not send wallet data."
         );
 
       }
 
     }
+  );
+
+}
 
 
-    /*
-     * Close this Mini App
-     */
-
-    setTimeout(
-      () => {
-
-        try {
-
-          telegram.close();
-
-        } catch (error) {
-
-          console.error(
-            "Telegram close error:",
-            error
-          );
-
-        }
-
-      },
-      800
-    );
-
-  }
-);
-
+/* =========================================
+   START
+========================================= */
 
 prepareProof();
